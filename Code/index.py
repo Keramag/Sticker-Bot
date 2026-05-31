@@ -1,35 +1,35 @@
-import os
-from telethon import TelegramClient, events
 import asyncio
+import logging
+import os
 
-# Credentials are supplied via environment variables (configured in the
-# Portainer stack). See docker-compose.yml.
-API_ID = int(os.environ['API_ID'])
-API_HASH = os.environ['API_HASH']
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from aiogram.types import Message
+
+# Only the bot token is required (aiogram uses the HTTP Bot API).
 BOT_TOKEN = os.environ['BOT_TOKEN']
 
-# Persist the session (and future SQLite DB) under the data volume so login
-# and sticker counts survive container restarts.
+# Persist the future SQLite student DB under the data volume so sticker
+# counts survive container restarts.
 DATA_DIR = os.environ.get('DATA_DIR', 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
-SESSION_PATH = os.path.join(DATA_DIR, 'sticker_bot')
 
-client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
-
-
-@client.on(events.NewMessage(pattern='/help'))
-async def handle_help(event):
-    """Respond to /help command"""
-    await event.respond('Hi, I am a sticker tracking bot')
+dp = Dispatcher()
 
 
-async def main():
-    """Start the bot"""
-    async with client:
-        await client.start(bot_token=BOT_TOKEN)
-        print('Sticker tracking bot is running...')
-        await client.run_until_disconnected()
+@dp.message(Command('help'))
+async def handle_help(message: Message) -> None:
+    """Respond to /help command."""
+    await message.answer('Hi, I am a sticker tracking bot')
+
+
+async def main() -> None:
+    """Start the bot."""
+    bot = Bot(token=BOT_TOKEN)
+    logging.info('Sticker tracking bot is running...')
+    await dp.start_polling(bot)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())

@@ -26,11 +26,9 @@ services:
       - ./data:/app/data
 
     environment:
-      # Telegram credentials — configure these in the Portainer stack env vars
-      - API_ID=${API_ID}
-      - API_HASH=${API_HASH}
+      # Telegram bot token — configure this in the Portainer stack env vars
       - BOT_TOKEN=${BOT_TOKEN}
-      # Where the session/DB live inside the container (matches the volume)
+      # Where the SQLite DB lives inside the container (matches the volume)
       - DATA_DIR=/app/data
 
     restart: unless-stopped
