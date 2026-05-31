@@ -28,6 +28,9 @@ services:
     environment:
       # Telegram bot token — configure this in the Portainer stack env vars
       - BOT_TOKEN=${BOT_TOKEN}
+      # Optional: restrict management commands to one teacher's Telegram user id.
+      # Leave unset to allow everyone (useful while developing).
+      - TEACHER_ID=${TEACHER_ID:-}
       # Where the SQLite DB lives inside the container (matches the volume)
       - DATA_DIR=/app/data
 
