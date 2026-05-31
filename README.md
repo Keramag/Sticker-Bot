@@ -14,9 +14,10 @@ you write each command in its own small file.
 | `/leaderboard` | Show all students sorted by sticker count           | scaffold (you fill in)  |
 
 `/addstudent` is fully written for you as a worked example — copy its style for
-the others. Every command, including multi-step ones, is plain top-to-bottom
-code using the `ctx.say()` / `ctx.ask()` / `ctx.choose()` helpers (see below).
-No `async`/`await`, no states to manage.
+the others. Commands are plain [pyTelegramBotAPI](https://pytba.readthedocs.io/)
+handlers (no `async`/`await`). Multi-step conversations use a tiny finite state
+machine (FSM) that remembers which step each chat is on — it's just a dictionary,
+and it lives in plain sight in `Code/bot/fsm.py`.
 
 ## Where you write code
 
@@ -27,7 +28,8 @@ file has `# TODO` steps with hints. Fill them in!
 Code/
   index.py            # start-up wiring — you don't need to touch this
   bot/
-    framework.py      # the mini-framework — you don't need to touch this
+    __init__.py       # creates the shared `bot` — you don't need to touch this
+    fsm.py            # the tiny finite state machine — read it, it's ~25 lines
     storage.py        # database functions — ready to use, no changes needed
   commands/           # ← YOU WORK HERE
     help.py
@@ -39,22 +41,44 @@ Code/
     README.md
 ```
 
-## The 3 tools you use in a command
+## How a command works
 
-Every command receives `ctx` ("the conversation"). It gives you:
-
-```python
-ctx.say("some text")            # send a message
-name = ctx.ask("Your name?")    # ask, then wait for a typed reply
-pick = ctx.choose("Pick:", [1, 2, 3])   # show buttons, wait for a tap
-```
-
-For `choose`, you can show nice labels for objects:
+Each command file imports the shared `bot` and hangs a handler on it. The handler
+receives the Telegram `message` and replies with `bot.send_message(...)`:
 
 ```python
-students = storage.list_students()
-student = ctx.choose("Select student:", students, label=lambda s: s.name)
+from bot import bot
+
+@bot.message_handler(commands=["help"])
+def help_command(message):
+    bot.send_message(message.chat.id, "Hi, I am a sticker tracking bot")
 ```
+
+### Multi-step conversations (the FSM)
+
+When a command needs more than one message (ask, then wait for the answer), use
+the tiny FSM helpers from `bot/fsm.py` to remember the step:
+
+```python
+from bot import bot
+from bot.fsm import set_state, waiting_for, clear
+
+@bot.message_handler(commands=["addstudent"])
+def addstudent(message):
+    bot.send_message(message.chat.id, "Enter student name:")
+    set_state(message.chat.id, "awaiting_name")     # move to the next step
+
+# runs ONLY while the chat is on the "awaiting_name" step
+@bot.message_handler(func=lambda m: waiting_for(m, "awaiting_name"))
+def addstudent_got_name(message):
+    bot.send_message(message.chat.id, f"Got {message.text}")
+    clear(message.chat.id)                          # conversation finished
+```
+
+The full helper set is `set_state` / `get_state` / `set_data` / `get_data` /
+`clear` / `waiting_for`. Use `set_data` / `get_data` to remember an answer across
+steps (e.g. which student you picked in `/award`). For tappable buttons, see the
+worked notes in `Code/commands/award.py`.
 
 ## Saving and reading data (the storage layer)
 
@@ -79,17 +103,27 @@ SQLite file under the data folder, so it survives bot restarts.
 2. Write:
 
    ```python
-   from bot.framework import command
+   from bot import bot
 
-   @command("remove", description="Remove a student")
-   def remove(ctx):
-       ctx.say("TODO: write me!")
+   @bot.message_handler(commands=["remove"])
+   def remove(message):
+       bot.send_message(message.chat.id, "TODO: write me!")
    ```
 
-3. Restart the bot. That's it — the framework finds the file automatically.
+3. Add one line to `Code/index.py` so the file gets imported (that's what turns
+   the command on): `import commands.remove`. Optionally add a `BotCommand` entry
+   to `set_my_commands` so it shows in the "/" menu. Then restart the bot.
 
-> By default commands are **teacher-only**. Add `teacher_only=False` to let
-> anyone use a command (like `/help` and `/leaderboard`).
+> Commands are open to everyone by default. To make one teacher-only, check at
+> the top of the handler:
+> ```python
+> from bot import bot, is_teacher
+>
+> if not is_teacher(message.from_user.id):
+>     bot.send_message(message.chat.id, "Teacher only.")
+>     return
+> ```
+> (`/addstudent` and `/award` already do this; `/help` and `/leaderboard` don't.)
 
 ## Running it locally
 

@@ -3,20 +3,26 @@
 Standalone code you can read and run to learn one idea at a time. These files
 are **not** part of the bot — nothing here is loaded when the bot starts.
 
-## `conversation_example.py` — asking a question and waiting for the answer
+## `conversation_example.py` — remembering what you're waiting for (a tiny FSM)
 
-A bot conversation has steps: after `/hello` the bot waits for your **name**.
-But a bot normally reacts to messages one at a time, so how does it know the
-next message is the answer to its question?
+A bot conversation has steps: after `/hello` the bot waits for your **name**. But
+a bot reacts to messages one at a time, so how does it know the next message is
+the answer? It has to **remember which step the chat is on**.
 
-pyTelegramBotAPI gives you one tool for this:
+That memory is a finite state machine (FSM), and in the example it is just one
+dictionary:
 
-| Tool                                          | What it does                                              |
-| --------------------------------------------- | --------------------------------------------------------- |
-| `bot.register_next_step_handler(message, fn)` | "Send the NEXT message from this chat to `fn` instead."   |
+```python
+states = {chat_id: "awaiting_name"}
+```
 
-That's the whole trick. You ask a question, then register the function that
-should handle the reply.
+| Step                     | What the next message means |
+| ------------------------ | --------------------------- |
+| (no step)                | maybe a command like /hello |
+| `awaiting_name`          | the person's name           |
+
+`/hello` sets the step to `awaiting_name`; the second handler runs only while the
+chat is on that step, so it knows the message is the answer, then clears the step.
 
 ### Run it
 
@@ -26,22 +32,13 @@ Get a token from [@BotFather](https://t.me/BotFather), then:
 BOT_TOKEN="123:abc" python Code/examples/conversation_example.py
 ```
 
-Send `/hello` to your bot and follow along.
+Send `/hello` to your bot and follow along. Add `print(states)` inside the
+handlers to literally watch the machine change step.
 
-## This vs. the `ctx.ask()` helper
+## This vs. the real bot
 
-The example above is the **raw** way: you split the conversation across two
-functions (`start` asks, `got_name` handles the reply) and pass control between
-them with `register_next_step_handler`.
-
-The bot gives you a friendlier shortcut, `ctx.ask()` / `ctx.choose()`, that does
-the same thing but lets you write the whole flow as simple top-to-bottom code:
-
-```python
-name = ctx.ask("Enter student name:")   # asks AND waits for the reply, in one line
-ctx.say(f"Hello, {name}!")
-```
-
-See it in action in `Code/commands/addstudent.py` (the `/addstudent` command).
-Start with `ctx.ask()` for your own commands — peek at this example only when
-you're curious what it's doing underneath.
+The example keeps its `states` dict right there in the file so you can see every
+gear. The bot does the exact same thing, just tidied into reusable helpers in
+[`Code/bot/fsm.py`](../bot/fsm.py) — `set_state`, `get_state`, `set_data`,
+`get_data`, `clear`, and `waiting_for`. See them used in the worked
+[`Code/commands/addstudent.py`](../commands/addstudent.py).

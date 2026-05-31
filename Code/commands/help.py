@@ -1,15 +1,14 @@
 """The /help command.
 
-This is the simplest possible command — a good place to start.
-Your job: make the bot reply with a short, friendly description of itself.
+The simplest possible command — a good place to start. No conversation, no
+state: one message comes in, one message goes out. Anyone may run it.
 """
 
-from bot.framework import command
+from bot import bot
 
 
-# `teacher_only=False` means ANYONE can run /help (students too).
-@command("help", description="Show what this bot does", teacher_only=False)
-def help_command(ctx):
-    # TODO: Send a friendly message describing the bot.
-    #   Hint: ctx.say("Hi, I am a sticker tracking bot")
+@bot.message_handler(commands=["help"])
+def help_command(message):
+    # TODO: Reply with a short, friendly message describing the bot.
+    #   Hint: bot.send_message(message.chat.id, "Hi, I am a sticker tracking bot")
     ...
