@@ -12,3 +12,4 @@ def help_command(message):
     # TODO: Reply with a short, friendly message describing the bot.
     #   Hint: bot.send_message(message.chat.id, "Hi, I am a sticker tracking bot")
     ...
+    bot.send_message(message.chat.id, "Hi, hruk")
