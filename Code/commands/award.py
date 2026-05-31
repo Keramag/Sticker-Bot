@@ -17,23 +17,23 @@ from bot.framework import command
 
 
 @command("award", description="Award stickers to a student")
-async def award(ctx):
+def award(ctx):
     # TODO 1: Get the list of all students from storage.
     #   Hint: students = storage.list_students()
 
     # TODO 2: If there are no students yet, tell the teacher and stop.
     #   Hint: if not students:
-    #             await ctx.say("No students yet. Add one with /addstudent.")
+    #             ctx.say("No students yet. Add one with /addstudent.")
     #             return
 
     # TODO 3: Show the students as buttons and wait for the teacher to pick one.
     #   The `label` tells the button what text to show for each student.
-    #   Hint: student = await ctx.choose("Select student:", students, label=lambda s: s.name)
+    #   Hint: student = ctx.choose("Select student:", students, label=lambda s: s.name)
 
     # TODO 4: Ask how many stickers, offering a few handy amounts as buttons.
-    #   Hint: amount = await ctx.choose("How many stickers?", [1, 2, 3, 5])
+    #   Hint: amount = ctx.choose("How many stickers?", [1, 2, 3, 5])
 
     # TODO 5: Award the stickers and confirm the new total.
     #   Hint: total = storage.award_stickers(student.id, amount)
-    #         await ctx.say(f"{student.name} now has {total} stickers.")
+    #         ctx.say(f"{student.name} now has {total} stickers.")
     ...

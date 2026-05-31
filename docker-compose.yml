@@ -21,7 +21,7 @@ services:
       - "traefik.http.routers.sticker-bot.tls.certresolver=myresolver"
       - "traefik.http.services.sticker-bot.loadbalancer.server.port=8080"
 
-    # Persistent data: Telegram session file + future SQLite student DB
+    # Persistent data: the SQLite student database
     volumes:
       - ./data:/app/data
 

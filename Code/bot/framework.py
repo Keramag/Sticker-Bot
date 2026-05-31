@@ -6,40 +6,40 @@ a command stays simple. In your command files you only ever use three things:
     from bot.framework import command
 
     @command("hello", description="Say hello")
-    async def hello(ctx):
-        name = await ctx.ask("What is your name?")        # wait for a typed reply
-        pick = await ctx.choose("Pick one:", ["A", "B"])  # wait for a button tap
-        await ctx.say(f"Hi {name}, you picked {pick}")    # send a message
+    def hello(ctx):
+        name = ctx.ask("What is your name?")        # wait for a typed reply
+        pick = ctx.choose("Pick one:", ["A", "B"])  # wait for a button tap
+        ctx.say(f"Hi {name}, you picked {pick}")    # send a message
 
-Behind the scenes this uses aiogram and Telegram inline buttons, but you don't
-have to learn any of that to write a command.
+Notice there is no `async` and no `await` anywhere — your commands are plain,
+ordinary functions that read top to bottom. Behind the scenes this uses the
+pyTelegramBotAPI library and a little threading so that `ctx.ask()` can pause
+and wait for a reply, but you don't have to learn any of that to write a
+command.
 """
 
-import asyncio
 import importlib
+import logging
 import os
 import pkgutil
+import queue
+import threading
 
-from aiogram import Bot, Dispatcher, F, Router
-from aiogram.filters import Command
-from aiogram.types import (
-    CallbackQuery,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Message,
-)
+import telebot
+from telebot import types
 
-router = Router()
+# Created in start(). Your commands use it indirectly, through `ctx`.
+bot: telebot.TeleBot | None = None
 
-# Everything registered with @command, so /help and the menu can list them.
+# Everything registered with @command, so the "/" menu can list them.
 _REGISTERED: list[dict] = []
 
 # When a command is "waiting" for the teacher's next reply or button tap, we
-# park an asyncio Future here, keyed by the user's id, and resolve it when the
+# park a queue here, keyed by the chat id, and drop the answer into it when the
 # reply/tap arrives. This is what lets ctx.ask / ctx.choose read like normal
 # top-to-bottom code instead of a tangle of separate handler functions.
-_waiting_for_text: dict[int, asyncio.Future] = {}
-_waiting_for_choice: dict[int, tuple[asyncio.Future, list]] = {}
+_waiting_for_text: dict[int, queue.Queue] = {}
+_waiting_for_choice: dict[int, tuple[queue.Queue, list]] = {}
 
 # Optional: the Telegram user id of the teacher. If set, only that user may run
 # commands marked teacher_only. If unset, everyone is allowed (handy while you
@@ -56,27 +56,26 @@ def is_teacher(user_id: int) -> bool:
 class Conversation:
     """The `ctx` your command receives. Your friendly toolbox."""
 
-    def __init__(self, message: Message):
+    def __init__(self, message: types.Message):
         self.message = message
-        self.bot = message.bot
         self.chat_id = message.chat.id
         self.user_id = message.from_user.id
 
-    async def say(self, text: str, **kwargs):
+    def say(self, text: str, **kwargs):
         """Send a plain message to the chat."""
-        return await self.bot.send_message(self.chat_id, text, **kwargs)
+        return bot.send_message(self.chat_id, text, **kwargs)
 
-    async def ask(self, question: str) -> str:
+    def ask(self, question: str) -> str:
         """Ask a question and wait for the teacher to TYPE a reply.
 
         Returns the text they sent.
         """
-        await self.say(question)
-        future = asyncio.get_running_loop().create_future()
-        _waiting_for_text[self.user_id] = future
-        return await future
+        self.say(question)
+        answer: queue.Queue = queue.Queue(maxsize=1)
+        _waiting_for_text[self.chat_id] = answer
+        return answer.get()  # pauses here until the reply arrives
 
-    async def choose(self, question: str, options: list, label=None):
+    def choose(self, question: str, options: list, label=None):
         """Ask a question and wait for the teacher to TAP a button.
 
         `options` is a list of anything (numbers, strings, Student objects...).
@@ -84,82 +83,94 @@ class Conversation:
         e.g. label=lambda student: student.name. Returns the chosen option.
         """
         to_label = label or (lambda option: str(option))
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text=to_label(option), callback_data=f"choose:{index}")]
-                for index, option in enumerate(options)
-            ]
-        )
-        await self.say(question, reply_markup=keyboard)
-        future = asyncio.get_running_loop().create_future()
-        _waiting_for_choice[self.user_id] = (future, list(options))
-        return await future
+        keyboard = types.InlineKeyboardMarkup()
+        for index, option in enumerate(options):
+            keyboard.add(
+                types.InlineKeyboardButton(to_label(option), callback_data=f"choose:{index}")
+            )
+        self.say(question, reply_markup=keyboard)
+        answer: queue.Queue = queue.Queue(maxsize=1)
+        _waiting_for_choice[self.chat_id] = (answer, list(options))
+        return answer.get()  # pauses here until a button is tapped
 
 
 def command(name: str, description: str = "", teacher_only: bool = True):
-    """Decorator that turns an async function into a /command.
+    """Decorator that turns a function into a /command.
 
     Example:
         @command("leaderboard", description="Show standings")
-        async def leaderboard(ctx):
+        def leaderboard(ctx):
             ...
     """
 
     def decorator(func):
-        async def handler(message: Message):
-            ctx = Conversation(message)
-            # Starting a fresh command cancels any half-finished flow.
-            _waiting_for_text.pop(ctx.user_id, None)
-            _waiting_for_choice.pop(ctx.user_id, None)
-            if teacher_only and not is_teacher(ctx.user_id):
-                await ctx.say("Sorry, only the teacher can use this command.")
-                return
-            await func(ctx)
-
-        router.message.register(handler, Command(name))
-        _REGISTERED.append({"name": name, "description": description or name})
+        _REGISTERED.append(
+            {
+                "name": name,
+                "description": description or name,
+                "teacher_only": teacher_only,
+                "func": func,
+            }
+        )
         return func
 
     return decorator
 
 
 def registered_commands() -> list[dict]:
-    return list(_REGISTERED)
+    return [{"name": c["name"], "description": c["description"]} for c in _REGISTERED]
 
 
-def add_to_menu(name: str, description: str = ""):
-    """Show a command in Telegram's "/" menu.
+# --- internal plumbing: run commands and deliver replies/taps to them ----------
 
-    The @command decorator does this for you automatically. You only need this
-    when you write a command the "raw aiogram" way (e.g. an FSM command that
-    registers its own handlers) instead of using @command — see
-    commands/addstudent.py.
-    """
-    _REGISTERED.append({"name": name, "description": description or name})
-
-
-# --- internal plumbing: resolve the Futures that ask()/choose() are waiting on -
-
-async def _on_text_reply(message: Message):
-    """Any non-command message: if a command is waiting for text, deliver it."""
-    future = _waiting_for_text.pop(message.from_user.id, None)
-    if future and not future.done():
-        future.set_result(message.text or "")
+def _run_command(cmd: dict, message: types.Message):
+    """Run one command's function, having prepared its `ctx`."""
+    ctx = Conversation(message)
+    # Starting a fresh command cancels any half-finished flow for this chat.
+    _waiting_for_text.pop(ctx.chat_id, None)
+    _waiting_for_choice.pop(ctx.chat_id, None)
+    if cmd["teacher_only"] and not is_teacher(ctx.user_id):
+        ctx.say("Sorry, only the teacher can use this command.")
+        return
+    try:
+        cmd["func"](ctx)
+    except Exception:
+        logging.exception("Command /%s crashed", cmd["name"])
+        ctx.say("Oops, something went wrong running that command.")
 
 
-async def _on_button_tap(callback: CallbackQuery):
+def _make_handler(cmd: dict):
+    def handler(message: types.Message):
+        # Run the command in its own thread so it can pause inside ctx.ask /
+        # ctx.choose (waiting for a reply) without freezing the whole bot.
+        threading.Thread(target=_run_command, args=(cmd, message), daemon=True).start()
+
+    return handler
+
+
+def _on_reply(message: types.Message):
+    """Any ordinary message: if a command is waiting for text, deliver it."""
+    if message.text and message.text.startswith("/"):
+        return  # a slash command, not a reply — let the command handlers take it
+    answer = _waiting_for_text.pop(message.chat.id, None)
+    if answer:
+        answer.put(message.text or "")
+
+
+def _on_choice(call: types.CallbackQuery):
     """A 'choose' button was tapped: deliver the chosen option."""
-    entry = _waiting_for_choice.pop(callback.from_user.id, None)
-    await callback.answer()
+    bot.answer_callback_query(call.id)
+    entry = _waiting_for_choice.pop(call.message.chat.id, None)
     if not entry:
         return
-    future, options = entry
-    index = int(callback.data.split(":")[1])
-    if not future.done():
-        future.set_result(options[index])
+    answer, options = entry
+    index = int(call.data.split(":")[1])
+    answer.put(options[index])
     # Remove the buttons so they can't be tapped twice.
     try:
-        await callback.message.edit_reply_markup(reply_markup=None)
+        bot.edit_message_reply_markup(
+            call.message.chat.id, call.message.message_id, reply_markup=None
+        )
     except Exception:
         pass
 
@@ -172,13 +183,26 @@ def load_commands():
         importlib.import_module(f"commands.{module.name}")
 
 
-def build_dispatcher() -> Dispatcher:
-    """Wire up aiogram. Call this AFTER load_commands()."""
-    # Registered last, so the catch-all reply/tap handlers have lower priority
-    # than the real /command handlers.
-    router.message.register(_on_text_reply)
-    router.callback_query.register(_on_button_tap, F.data.startswith("choose:"))
+def start():
+    """Create the bot, wire everything up, and start listening. Call this once."""
+    global bot
+    logging.basicConfig(level=logging.INFO)
+    bot = telebot.TeleBot(os.environ["BOT_TOKEN"], threaded=False)
 
-    dispatcher = Dispatcher()
-    dispatcher.include_router(router)
-    return dispatcher
+    load_commands()  # import every command file so their @command runs
+
+    # Real /commands first...
+    for cmd in _REGISTERED:
+        bot.register_message_handler(_make_handler(cmd), commands=[cmd["name"]])
+    # ...then the catch-alls that feed ctx.ask() / ctx.choose(), registered last
+    # so they only handle leftovers (replies and button taps).
+    bot.register_message_handler(_on_reply, func=lambda m: True)
+    bot.register_callback_query_handler(_on_choice, func=lambda c: True)
+
+    # Show the command list in Telegram's "/" menu.
+    bot.set_my_commands(
+        [types.BotCommand(c["name"], c["description"]) for c in registered_commands()]
+    )
+
+    logging.info("Sticker tracking bot is running...")
+    bot.infinity_polling()

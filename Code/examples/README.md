@@ -3,47 +3,45 @@
 Standalone code you can read and run to learn one idea at a time. These files
 are **not** part of the bot — nothing here is loaded when the bot starts.
 
-## `fsm_example.py` — Finite State Machines (FSM)
+## `conversation_example.py` — asking a question and waiting for the answer
 
 A bot conversation has steps: after `/hello` the bot waits for your **name**.
-That "waiting for…" situation is a **state**, and the bot moves between states.
-That collection of states and the moves between them is a **Finite State
-Machine**.
+But a bot normally reacts to messages one at a time, so how does it know the
+next message is the answer to its question?
 
-aiogram gives you the building blocks:
+pyTelegramBotAPI gives you one tool for this:
 
-| Tool                              | What it does                                 |
-| --------------------------------- | -------------------------------------------- |
-| `class X(StatesGroup)` + `State()`| Name the steps of the conversation           |
-| `await state.set_state(X.step)`   | Move the user into a step                     |
-| `@router.message(X.step)`         | A handler that runs *only* during that step   |
-| `await state.clear()`             | End the conversation, forget the state        |
+| Tool                                          | What it does                                              |
+| --------------------------------------------- | --------------------------------------------------------- |
+| `bot.register_next_step_handler(message, fn)` | "Send the NEXT message from this chat to `fn` instead."   |
+
+That's the whole trick. You ask a question, then register the function that
+should handle the reply.
 
 ### Run it
 
 Get a token from [@BotFather](https://t.me/BotFather), then:
 
 ```bash
-pip install -r requirements.txt
-BOT_TOKEN="123:abc" python Code/examples/fsm_example.py
+BOT_TOKEN="123:abc" python Code/examples/conversation_example.py
 ```
 
 Send `/hello` to your bot and follow along.
 
-> **Going further:** for a flow with several steps you can carry answers from
-> one step to the next with `await state.update_data(name=...)` and
-> `await state.get_data()`. Skip this until you're comfortable with the basics.
+## This vs. the `ctx.ask()` helper
 
-## FSM vs. the `ctx.ask()` helper
+The example above is the **raw** way: you split the conversation across two
+functions (`start` asks, `got_name` handles the reply) and pass control between
+them with `register_next_step_handler`.
 
-This project gives you a shortcut, `ctx.ask()` / `ctx.choose()`, that lets you
-write multi-step flows as simple top-to-bottom code without thinking about
-states. That's great for getting started.
+The bot gives you a friendlier shortcut, `ctx.ask()` / `ctx.choose()`, that does
+the same thing but lets you write the whole flow as simple top-to-bottom code:
 
-FSM is the **standard, lower-level way** every aiogram project uses. It's more
-code, but it scales to complicated flows and is what you'll see in real
-projects and tutorials online.
+```python
+name = ctx.ask("Enter student name:")   # asks AND waits for the reply, in one line
+ctx.say(f"Hello, {name}!")
+```
 
-See both side by side:
-- **`ctx.ask()` style:** `Code/commands/award.py`, `Code/commands/leaderboard.py`
-- **Real FSM style:** `Code/commands/addstudent.py` (the `/addstudent` command)
+See it in action in `Code/commands/addstudent.py` (the `/addstudent` command).
+Start with `ctx.ask()` for your own commands — peek at this example only when
+you're curious what it's doing underneath.

@@ -13,18 +13,18 @@ from bot.framework import command
 
 
 @command("leaderboard", description="Show sticker standings", teacher_only=False)
-async def leaderboard(ctx):
+def leaderboard(ctx):
     # TODO 1: Get all students sorted by sticker count (highest first).
     #   Hint: students = storage.get_leaderboard()
 
     # TODO 2: If there are no students yet, say so and stop.
     #   Hint: if not students:
-    #             await ctx.say("No students yet. Add one with /addstudent.")
+    #             ctx.say("No students yet. Add one with /addstudent.")
     #             return
 
     # TODO 3: Build a numbered list, one student per line, then send it.
     #   Hint: lines = []
     #         for position, student in enumerate(students, start=1):
     #             lines.append(f"{position}. {student.name} — {student.sticker_count} stickers")
-    #         await ctx.say("\n".join(lines))
+    #         ctx.say("\n".join(lines))
     ...

@@ -9,14 +9,14 @@ you write each command in its own small file.
 | Command        | What it should do                                   | Status                  |
 | -------------- | --------------------------------------------------- | ----------------------- |
 | `/help`        | Reply with a short description of the bot           | scaffold (you fill in)  |
-| `/addstudent`  | Ask for a name, then save a new student             | **worked FSM example**  |
+| `/addstudent`  | Ask for a name, then save a new student             | **worked example**      |
 | `/award`       | Pick a student (buttons), pick an amount, add it    | scaffold (you fill in)  |
 | `/leaderboard` | Show all students sorted by sticker count           | scaffold (you fill in)  |
 
-There are two ways to write a multi-step conversation here. `/addstudent` is a
-finished example of the **real aiogram FSM** way; the others use the simpler
-`ctx.ask()` / `ctx.choose()` helpers. Start with `Code/examples/` to learn FSM
-on its own, then compare it with `Code/commands/addstudent.py`.
+`/addstudent` is fully written for you as a worked example — copy its style for
+the others. Every command, including multi-step ones, is plain top-to-bottom
+code using the `ctx.say()` / `ctx.ask()` / `ctx.choose()` helpers (see below).
+No `async`/`await`, no states to manage.
 
 ## Where you write code
 
@@ -31,11 +31,11 @@ Code/
     storage.py        # database functions — ready to use, no changes needed
   commands/           # ← YOU WORK HERE
     help.py
-    addstudent.py     # finished example, written with a real aiogram FSM
+    addstudent.py     # finished example — copy this style
     award.py
     leaderboard.py
   examples/           # learning material — read these, run them on their own
-    fsm_example.py
+    conversation_example.py
     README.md
 ```
 
@@ -44,16 +44,16 @@ Code/
 Every command receives `ctx` ("the conversation"). It gives you:
 
 ```python
-await ctx.say("some text")            # send a message
-name = await ctx.ask("Your name?")    # ask, then wait for a typed reply
-pick = await ctx.choose("Pick:", [1, 2, 3])   # show buttons, wait for a tap
+ctx.say("some text")            # send a message
+name = ctx.ask("Your name?")    # ask, then wait for a typed reply
+pick = ctx.choose("Pick:", [1, 2, 3])   # show buttons, wait for a tap
 ```
 
 For `choose`, you can show nice labels for objects:
 
 ```python
 students = storage.list_students()
-student = await ctx.choose("Select student:", students, label=lambda s: s.name)
+student = ctx.choose("Select student:", students, label=lambda s: s.name)
 ```
 
 ## Saving and reading data (the storage layer)
@@ -82,8 +82,8 @@ SQLite file under the data folder, so it survives bot restarts.
    from bot.framework import command
 
    @command("remove", description="Remove a student")
-   async def remove(ctx):
-       await ctx.say("TODO: write me!")
+   def remove(ctx):
+       ctx.say("TODO: write me!")
    ```
 
 3. Restart the bot. That's it — the framework finds the file automatically.
@@ -93,13 +93,13 @@ SQLite file under the data folder, so it survives bot restarts.
 
 ## Running it locally
 
-You need a bot token from [@BotFather](https://t.me/BotFather) and **Python 3.12**.
+You need a bot token from [@BotFather](https://t.me/BotFather) and Python 3.10 or
+newer — including the very latest release.
 
-> **Why 3.12 and not the newest Python?** The pinned `aiogram 3.13.1` depends on
-> `pydantic-core`, which only ships prebuilt wheels up through Python 3.12. On
-> newer versions (e.g. 3.14) installation falls back to compiling from Rust
-> source and fails. 3.12 also matches the production Docker image, so local
-> behaves like prod.
+> **Which Python?** Any recent Python 3 (3.10+) works, including the newest one,
+> because `pyTelegramBotAPI` is pure Python with no compiled dependencies. The
+> production Docker image uses 3.12; if you want your local setup to match it
+> exactly, add `--python 3.12` to the `uv venv` command below.
 
 ### Recommended: [uv](https://docs.astral.sh/uv/)
 
@@ -109,8 +109,8 @@ once with `brew install uv` (or `curl -LsSf https://astral.sh/uv/install.sh | sh
 then:
 
 ```bash
-# 1. Create a virtual environment with Python 3.12 (uv downloads it if you don't have it)
-uv venv --python 3.12
+# 1. Create a virtual environment (uses your default Python)
+uv venv
 
 # 2. Install dependencies into that environment
 uv pip install -r requirements.txt
@@ -130,10 +130,10 @@ it again.
 
 ### Alternative: plain venv + pip
 
-If you already have Python 3.12 installed and would rather not use uv:
+If you already have Python installed and would rather not use uv:
 
 ```bash
-python3.12 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 BOT_TOKEN="123:abc" python Code/index.py
