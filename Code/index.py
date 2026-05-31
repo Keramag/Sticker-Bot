@@ -1,12 +1,20 @@
+import os
 from telethon import TelegramClient, events
 import asyncio
 
-# Replace these with your actual credentials
-API_ID = 'YOUR_API_ID'
-API_HASH = 'YOUR_API_HASH'
-BOT_TOKEN = 'YOUR_BOT_TOKEN'
+# Credentials are supplied via environment variables (configured in the
+# Portainer stack). See docker-compose.yml.
+API_ID = int(os.environ['API_ID'])
+API_HASH = os.environ['API_HASH']
+BOT_TOKEN = os.environ['BOT_TOKEN']
 
-client = TelegramClient('sticker_bot', API_ID, API_HASH)
+# Persist the session (and future SQLite DB) under the data volume so login
+# and sticker counts survive container restarts.
+DATA_DIR = os.environ.get('DATA_DIR', 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+SESSION_PATH = os.path.join(DATA_DIR, 'sticker_bot')
+
+client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
 
 
 @client.on(events.NewMessage(pattern='/help'))

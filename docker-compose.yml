@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  bot:
+    # The image tag is replaced with the commit SHA by the GitHub Actions
+    # workflow on the `deploy` branch. The `:latest` here is only a placeholder
+    # for the main branch — Portainer should track the `deploy` branch.
+    image: ghcr.io/keramag/sticker-bot:latest
+    container_name: sticker-bot
+    networks:
+      - traefik_network
+    labels:
+      # Enable Traefik for this service
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK_NAME:-traefik_default}"
+
+      # HTTP router (points at a future health/web endpoint on port 8080;
+      # the bot itself is a worker and currently exposes nothing).
+      - "traefik.http.routers.sticker-bot.rule=Host(`${HOSTNAME}`)"
+      - "traefik.http.routers.sticker-bot.entrypoints=websecure"
+      - "traefik.http.routers.sticker-bot.tls.certresolver=myresolver"
+      - "traefik.http.services.sticker-bot.loadbalancer.server.port=8080"
+
+    # Persistent data: Telegram session file + future SQLite student DB
+    volumes:
+      - ./data:/app/data
+
+    environment:
+      # Telegram credentials — configure these in the Portainer stack env vars
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - BOT_TOKEN=${BOT_TOKEN}
+      # Where the session/DB live inside the container (matches the volume)
+      - DATA_DIR=/app/data
+
+    restart: unless-stopped
+
+networks:
+  traefik_network:
+    external: true
+    name: ${TRAEFIK_NETWORK_NAME:-traefik_default}
