@@ -91,17 +91,59 @@ SQLite file under the data folder, so it survives bot restarts.
 > By default commands are **teacher-only**. Add `teacher_only=False` to let
 > anyone use a command (like `/help` and `/leaderboard`).
 
-## Running it
+## Running it locally
 
-Set a bot token (from [@BotFather](https://t.me/BotFather)) and run:
+You need a bot token from [@BotFather](https://t.me/BotFather) and **Python 3.12**.
+
+> **Why 3.12 and not the newest Python?** The pinned `aiogram 3.13.1` depends on
+> `pydantic-core`, which only ships prebuilt wheels up through Python 3.12. On
+> newer versions (e.g. 3.14) installation falls back to compiling from Rust
+> source and fails. 3.12 also matches the production Docker image, so local
+> behaves like prod.
+
+### Recommended: [uv](https://docs.astral.sh/uv/)
+
+`uv` is a fast, all-in-one Python tool. It creates the virtual environment and
+installs the dependencies for you — no extra config files needed. Install it
+once with `brew install uv` (or `curl -LsSf https://astral.sh/uv/install.sh | sh`),
+then:
 
 ```bash
+# 1. Create a virtual environment with Python 3.12 (uv downloads it if you don't have it)
+uv venv --python 3.12
+
+# 2. Install dependencies into that environment
+uv pip install -r requirements.txt
+
+# 3. Run the bot
+BOT_TOKEN="123:abc" .venv/bin/python Code/index.py
+```
+
+> **Using the fish shell?** The `VAR=value command` form above is bash/zsh only.
+> In fish, run step 3 as:
+> ```fish
+> env BOT_TOKEN=123:abc .venv/bin/python Code/index.py
+> ```
+
+Stop the bot with `Ctrl+C`. After the first setup you only need step 3 to start
+it again.
+
+### Alternative: plain venv + pip
+
+If you already have Python 3.12 installed and would rather not use uv:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 BOT_TOKEN="123:abc" python Code/index.py
 ```
 
-Optional: set `TEACHER_ID` to your own Telegram user id to lock management
-commands to just you. Leave it unset while testing.
+### Options
+
+Set `TEACHER_ID` to your own Telegram user id to lock management commands to just
+you (e.g. `BOT_TOKEN=... TEACHER_ID=... .venv/bin/python Code/index.py`). Leave it
+unset while testing.
 
 Deployment (Docker + GitHub Actions + Portainer) is already configured — see
 `docker-compose.yml` and `.github/workflows/deploy.yml`.
