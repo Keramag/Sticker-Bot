@@ -6,12 +6,17 @@ you write each command in its own small file.
 
 ## What you build
 
-| Command        | What it should do                                   |
-| -------------- | --------------------------------------------------- |
-| `/help`        | Reply with a short description of the bot           |
-| `/addstudent`  | Ask for a name, then save a new student             |
-| `/award`       | Pick a student (buttons), pick an amount, add it    |
-| `/leaderboard` | Show all students sorted by sticker count           |
+| Command        | What it should do                                   | Status                  |
+| -------------- | --------------------------------------------------- | ----------------------- |
+| `/help`        | Reply with a short description of the bot           | scaffold (you fill in)  |
+| `/addstudent`  | Ask for a name, then save a new student             | **worked FSM example**  |
+| `/award`       | Pick a student (buttons), pick an amount, add it    | scaffold (you fill in)  |
+| `/leaderboard` | Show all students sorted by sticker count           | scaffold (you fill in)  |
+
+There are two ways to write a multi-step conversation here. `/addstudent` is a
+finished example of the **real aiogram FSM** way; the others use the simpler
+`ctx.ask()` / `ctx.choose()` helpers. Start with `Code/examples/` to learn FSM
+on its own, then compare it with `Code/commands/addstudent.py`.
 
 ## Where you write code
 
@@ -26,9 +31,12 @@ Code/
     storage.py        # database functions — ready to use, no changes needed
   commands/           # ← YOU WORK HERE
     help.py
-    addstudent.py
+    addstudent.py     # finished example, written with a real aiogram FSM
     award.py
     leaderboard.py
+  examples/           # learning material — read these, run them on their own
+    fsm_example.py
+    README.md
 ```
 
 ## The 3 tools you use in a command

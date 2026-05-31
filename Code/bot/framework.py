@@ -127,6 +127,17 @@ def registered_commands() -> list[dict]:
     return list(_REGISTERED)
 
 
+def add_to_menu(name: str, description: str = ""):
+    """Show a command in Telegram's "/" menu.
+
+    The @command decorator does this for you automatically. You only need this
+    when you write a command the "raw aiogram" way (e.g. an FSM command that
+    registers its own handlers) instead of using @command — see
+    commands/addstudent.py.
+    """
+    _REGISTERED.append({"name": name, "description": description or name})
+
+
 # --- internal plumbing: resolve the Futures that ask()/choose() are waiting on -
 
 async def _on_text_reply(message: Message):
