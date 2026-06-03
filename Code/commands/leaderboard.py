@@ -14,17 +14,12 @@ from bot import bot, storage
 
 @bot.message_handler(commands=["leaderboard"])
 def leaderboard(message):
-    # TODO 1: Get all students sorted by sticker count (highest first).
-    #   Hint: students = storage.get_leaderboard()
+    students = storage.get_leaderboard()
+    if not students:
+        bot.send_message(message.chat.id, "No students yet. Add one with /addstudent.")
+        return
 
-    # TODO 2: If there are no students yet, say so and stop.
-    #   Hint: if not students:
-    #             bot.send_message(message.chat.id, "No students yet. Add one with /addstudent.")
-    #             return
-
-    # TODO 3: Build a numbered list, one student per line, then send it.
-    #   Hint: lines = []
-    #         for position, student in enumerate(students, start=1):
-    #             lines.append(f"{position}. {student.name} — {student.sticker_count} stickers")
-    #         bot.send_message(message.chat.id, "\n".join(lines))
-    ...
+    lines = []
+    for position, student in enumerate(students, start=1):
+        lines.append(f"{position}. {student.name} — {student.sticker_count} stickers")
+    bot.send_message(message.chat.id, "\n".join(lines))
