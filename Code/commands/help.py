@@ -13,5 +13,5 @@ def help_command(message):
         message.chat.id,
         "Hi, I am a sticker tracking bot."
         "\n\nType /addstudent to add a student, /award to award a sticker, /leaderboard to see the leaderboard,"
-        " /clear to reset a student's sticker total, and /help to see this message again."
+        " /clear to reset a student's sticker total, /remove to delete a student, and /help to see this message again."
     )

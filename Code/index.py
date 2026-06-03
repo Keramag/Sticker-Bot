@@ -17,6 +17,7 @@ import commands.help
 import commands.addstudent
 import commands.award
 import commands.clear
+import commands.remove
 import commands.leaderboard
 
 
@@ -30,6 +31,7 @@ def main():
             types.BotCommand("addstudent", "Add a new student"),
             types.BotCommand("award", "Award stickers to a student"),
             types.BotCommand("clear", "Reset a student's sticker total"),
+            types.BotCommand("remove", "Remove a student"),
             types.BotCommand("leaderboard", "Show sticker standings"),
         ]
     )

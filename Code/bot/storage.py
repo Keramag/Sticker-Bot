@@ -99,6 +99,15 @@ def clear_stickers(student_id: int) -> None:
         )
 
 
+def delete_student(student_id: int) -> None:
+    """Remove a student from the database."""
+    with _connect() as conn:
+        conn.execute(
+            "DELETE FROM students WHERE id = ?",
+            (student_id,),
+        )
+
+
 def get_leaderboard() -> list[Student]:
     """Return all students sorted by sticker count, highest first."""
     with _connect() as conn:

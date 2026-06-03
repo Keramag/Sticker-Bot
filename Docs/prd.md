@@ -159,6 +159,39 @@ Selects John Smith
 Bot:
 `John Smith's sticker count is now 0.`
 
+---
+
+### 5. Remove Student
+
+#### Command
+
+`/remove`
+
+#### Description
+
+Delete a student from the sticker tracker.
+
+#### Flow
+
+1. Teacher enters command.
+2. Bot displays a list of students.
+3. Teacher selects a student.
+4. Bot removes that student and confirms.
+
+#### Example
+
+Teacher:
+`/remove`
+
+Bot:
+`Select student to remove:`
+
+Teacher:
+Selects John Smith
+
+Bot:
+`Removed student John Smith.`
+
 ## Data Model
 
 ### Student
