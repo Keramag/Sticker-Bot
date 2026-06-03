@@ -9,7 +9,9 @@ from bot import bot
 
 @bot.message_handler(commands=["help"])
 def help_command(message):
-    # TODO: Reply with a short, friendly message describing the bot.
-    #   Hint: bot.send_message(message.chat.id, "Hi, I am a sticker tracking bot")
-    ...
-    bot.send_message(message.chat.id, " Type /addstudent to add a student, /award to award a sticker, /leaderboard to see the leaderboard, and /help to see this message again.")
+    bot.send_message(
+        message.chat.id,
+        "Hi, I am a sticker tracking bot."
+        "\n\nType /addstudent to add a student, /award to award a sticker, /leaderboard to see the leaderboard,"
+        " /clear to reset a student's sticker total, and /help to see this message again."
+    )

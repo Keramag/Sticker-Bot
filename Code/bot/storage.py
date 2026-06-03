@@ -90,6 +90,15 @@ def award_stickers(student_id: int, amount: int) -> int:
         return row["sticker_count"] if row else 0
 
 
+def clear_stickers(student_id: int) -> None:
+    """Reset a student's sticker count to zero."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE students SET sticker_count = 0 WHERE id = ?",
+            (student_id,),
+        )
+
+
 def get_leaderboard() -> list[Student]:
     """Return all students sorted by sticker count, highest first."""
     with _connect() as conn:

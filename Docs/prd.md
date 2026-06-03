@@ -126,6 +126,39 @@ Displays all students and their current sticker totals.
 * Sorted by highest sticker count.
 * Display total stickers next to each student.
 
+---
+
+### 4. Clear Student Stickers
+
+#### Command
+
+`/clear`
+
+#### Description
+
+Reset a student's sticker count to zero.
+
+#### Flow
+
+1. Teacher enters command.
+2. Bot displays a list of students.
+3. Teacher selects a student.
+4. Bot resets that student's sticker count and confirms.
+
+#### Example
+
+Teacher:
+`/clear`
+
+Bot:
+`Which student?`
+
+Teacher:
+Selects John Smith
+
+Bot:
+`John Smith's sticker count is now 0.`
+
 ## Data Model
 
 ### Student
