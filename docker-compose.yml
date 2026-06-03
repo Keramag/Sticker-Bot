@@ -5,7 +5,7 @@ services:
     # The image tag is replaced with the commit SHA by the GitHub Actions
     # workflow on the `deploy` branch. The `:latest` here is only a placeholder
     # for the main branch — Portainer should track the `deploy` branch.
-    image: ghcr.io/keramag/sticker-bot:latest
+    image: ghcr.io/keramag/sticker-bot:f91c04741b0c62876104a33e2a236ed425758097
     container_name: sticker-bot
     networks:
       - traefik_network
