@@ -84,9 +84,10 @@ def award_pick_amount(call):
     amount = int(call.data.split(":")[1])         # which amount was tapped
     student_id = get_data(chat_id, "student_id")  # the student we saved in step 2
 
-    # TODO: award the stickers, confirm the new total, then end the conversation.
-    #   1. total = storage.award_stickers(student_id, amount)
-    #   2. student = storage.get_student(student_id)
-    #   3. bot.send_message(chat_id, f"{student.name} now has {total} stickers.")
-    #   4. clear(chat_id)   # forget this chat's saved data — we're done
-    ...
+    total = storage.award_stickers(student_id, amount)
+    student = storage.get_student(student_id)
+    if student is None:
+        bot.send_message(chat_id, "Student not found. Please try again.")
+    else:
+        bot.send_message(chat_id, f"{student.name} now has {total} stickers.")
+    clear(chat_id)
